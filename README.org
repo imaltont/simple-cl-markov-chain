@@ -1,0 +1,7 @@
+* Simple Markov chain
+Simple Markov chain text generator written in Common Lisp. Doesn't do any weighting or heuristics to improve anything, or accept prompts, just generates semi-random text based on the input.
+
+Run with
+#+begin_quote
+sbcl --load "mc.lisp" --eval "(format t \"~a~&\" (markov \"data.txt\" 3 50))" --eval "(sb-ext:exit)"
+#+end_quote
