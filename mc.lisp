@@ -1,12 +1,14 @@
+(declaim (optimize (speed 3)))
 (setf *random-state* (make-random-state t))
 (defun markov (path num-lookback num-gen)
-  (let ((data (uiop:split-string (with-open-file (stream path :external-format :utf-8)
+  (let ((data (loop for c across (with-open-file (stream path :external-format :utf-8)
 				  (let ((contents (make-string (file-length stream))))
 				    (read-sequence contents stream)
-				    contents))))
+				    contents))
+                    collect c))
 	(database (make-hash-table :test 'equal)))
     (labels ((build-db (keys rest)
-	       (let ((key (format nil "~{~a~^ ~}" keys)))
+	       (let ((key (format nil "~{~a~}" keys)))
 		 (if (gethash key database)
 		  (push (car rest) (cdr (last (gethash key database))))
 		  (push (car rest) (gethash key database)))
@@ -23,17 +25,16 @@
 		   (loop for k = (multiple-value-list (iterator))
 			 while (car k)
 			 collect (cadr k))))
-	   (words (uiop:split-string (nth (random (length keys)) keys)))
+	   (words (reverse (loop for c across (nth (random (length keys)) keys) collect c)))
 	   (rev-words (reverse words)))
       (loop for i from 1 to num-gen
 	    do
-	    (let* ((candidates (gethash (format nil  "~{~a~^ ~}"
-					       (reverse (subseq rev-words 0 num-lookback)))
+	    (let* ((candidates (gethash (format nil  "~{~a~}"
+					       (reverse (subseq words 0 num-lookback )))
 				       database))
 		  (w (if candidates
 			 (nth (random (length candidates)) candidates)
 			 "")))
-	      (push w rev-words)
-	      (push w (cdr (last words)))))
-      (format nil "~{~a~^ ~}"
-	      words))))
+	      (push w words)))
+      (format nil "~{~a~}"
+	      (reverse words)))))
