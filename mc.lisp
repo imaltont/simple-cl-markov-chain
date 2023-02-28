@@ -38,3 +38,41 @@
 	      (push w words)))
       (format nil "~{~a~}"
 	      (reverse words)))))
+
+(defun markov-words (path num-lookback num-gen)
+  (let ((data (uiop:split-string (with-open-file (stream path :external-format :utf-8)
+				  (let ((contents (make-string (file-length stream))))
+				    (read-sequence contents stream)
+				    contents))))
+	(database (make-hash-table :test 'equal)))
+    (labels ((build-db (keys rest)
+	       (let ((key (format nil "~{~a~^ ~}" keys)))
+		 (if (gethash key database)
+		  (push (car rest) (cdr (last (gethash key database))))
+		  (push (car rest) (gethash key database)))
+		 (push (car rest) (cdr (last keys)))
+		 (if (cdr rest)
+		     (build-db
+		      (if (> (length keys) num-lookback)
+			  (cdr keys)
+			  keys)
+		      (cdr rest))
+		     '()))))
+      (build-db (subseq data 0 num-lookback) (subseq data num-lookback)))
+    (let* ((keys (with-hash-table-iterator (iterator database)
+		   (loop for k = (multiple-value-list (iterator))
+			 while (car k)
+			 collect (cadr k))))
+	   (words (reverse (uiop:split-string (nth (random (length keys)) keys))))
+	   (rev-words (reverse words)))
+      (loop for i from 1 to num-gen
+	    do
+	    (let* ((candidates (gethash (format nil  "~{~a~^ ~}"
+					       (reverse (subseq words 0 num-lookback )))
+				       database))
+		  (w (if candidates
+			 (nth (random (length candidates)) candidates)
+			 "")))
+	      (push w words)))
+      (format nil "~{~a~^ ~}"
+	      (reverse words)))))
